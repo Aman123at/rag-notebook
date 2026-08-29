@@ -1,0 +1,17 @@
+onlyBuiltDependencies:
+  - "@tailwindcss/oxide"
+  - esbuild
+  - unrs-resolver
+
+minimumReleaseAgeExclude:
+  - "@clerk/backend"
+  - "@clerk/nextjs"
+  - "@clerk/react"
+  - "@clerk/shared"
+  - "@tanstack/query-core"
+  - "@tanstack/react-query"
+
+allowBuilds:
+  '@tailwindcss/oxide': true
+  esbuild: true
+  unrs-resolver: true

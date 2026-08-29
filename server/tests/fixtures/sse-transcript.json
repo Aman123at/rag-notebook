@@ -1,0 +1,130 @@
+{
+  "description": "Fixture SSE transcript replayed by scripts/contract-mock.ts for POST /chats/:chatId/messages. Each entry describes one chat SSE event and how long to wait before writing the NEXT entry.",
+  "events": [
+    {
+      "delayMs": 0,
+      "event": {
+        "type": "message_start",
+        "data": {
+          "userMessageId": "11111111-1111-4111-8111-111111111111",
+          "assistantMessageId": "22222222-2222-4222-8222-222222222222",
+          "model": "gpt-4o-mini",
+          "chatId": "33333333-3333-4333-8333-333333333333"
+        }
+      }
+    },
+    {
+      "delayMs": 40,
+      "event": {
+        "type": "retrieval",
+        "data": { "status": "started", "chunkCount": 0 }
+      }
+    },
+    {
+      "delayMs": 80,
+      "event": {
+        "type": "retrieval",
+        "data": { "status": "completed", "chunkCount": 4 }
+      }
+    },
+    {
+      "delayMs": 40,
+      "event": {
+        "type": "citations",
+        "data": {
+          "citations": [
+            {
+              "index": 1,
+              "chunkId": "44444444-4444-4444-8444-444444444444",
+              "sourceId": "55555555-5555-4555-8555-555555555555",
+              "sourceTitle": "Attention Is All You Need — Vaswani et al., 2017",
+              "sourceType": "PDF",
+              "locator": { "kind": "pdf_page", "page": 3 },
+              "snippet": "Self-attention layers replace recurrence, letting the model relate distant tokens in one step.",
+              "score": 0.83
+            },
+            {
+              "index": 2,
+              "chunkId": "66666666-6666-4666-8666-666666666666",
+              "sourceId": "55555555-5555-4555-8555-555555555555",
+              "sourceTitle": "Attention Is All You Need — Vaswani et al., 2017",
+              "sourceType": "PDF",
+              "locator": { "kind": "pdf_page", "page": 5 },
+              "snippet": "Multi-head attention runs the same attention operation in parallel over projected subspaces.",
+              "score": 0.71
+            }
+          ]
+        }
+      }
+    },
+    {
+      "delayMs": 30,
+      "event": {
+        "type": "tool_call",
+        "data": {
+          "tool": "web_search",
+          "status": "started",
+          "query": "attention mechanism transformer 2024"
+        }
+      }
+    },
+    {
+      "delayMs": 220,
+      "event": {
+        "type": "tool_call",
+        "data": { "tool": "web_search", "status": "completed", "resultCount": 5 }
+      }
+    },
+    {
+      "delayMs": 20,
+      "event": {
+        "type": "web_citations",
+        "data": {
+          "citations": [
+            {
+              "index": 3,
+              "url": "https://example.com/transformers-101",
+              "title": "Transformers 101 — a friendly overview",
+              "snippet": "A short explainer of self-attention with runnable pseudo-code."
+            }
+          ]
+        }
+      }
+    },
+    { "delayMs": 60, "event": { "type": "token", "data": { "delta": "Transformers " } } },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": "use self-attention " } } },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": "to relate every " } } },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": "token in a sequence " } } },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": "in one operation [1]" } } },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": ", and multi-head " } } },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": "attention runs the " } } },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": "same computation in " } } },
+    {
+      "delayMs": 25,
+      "event": { "type": "token", "data": { "delta": "parallel across projected " } }
+    },
+    { "delayMs": 25, "event": { "type": "token", "data": { "delta": "subspaces [2][3]." } } },
+    {
+      "delayMs": 60,
+      "event": {
+        "type": "usage",
+        "data": {
+          "promptTokens": 1284,
+          "completionTokens": 96,
+          "totalTokens": 1380,
+          "remainingTokens": 998620
+        }
+      }
+    },
+    {
+      "delayMs": 20,
+      "event": {
+        "type": "message_end",
+        "data": {
+          "assistantMessageId": "22222222-2222-4222-8222-222222222222",
+          "finishReason": "stop"
+        }
+      }
+    }
+  ]
+}

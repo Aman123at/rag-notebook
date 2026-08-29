@@ -1,0 +1,10 @@
+export default {
+  printWidth: 100,
+  singleQuote: true,
+  semi: true,
+  trailingComma: 'all',
+  arrowParens: 'always',
+  tabWidth: 2,
+  useTabs: false,
+  endOfLine: 'lf',
+};

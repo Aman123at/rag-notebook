@@ -1,0 +1,31 @@
+
+# Production secrets — never commit
+variables.env
+
+# Dependencies
+client/node_modules/
+server/node_modules/
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+client/.env
+client/.env.local
+server/.env
+!.env.example
+!client/.env.example
+!server/.env.example
+
+# OS
+.DS_Store
+
+# Build artifacts
+*.tsbuildinfo
+.next/
+dist/
+coverage/
+
+# Internal notes — not for publication
+CHANGES_MADE.md

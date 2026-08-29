@@ -1,0 +1,28 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+node_modules
+dist
+coverage
+.turbo
+.next
+
+.vscode
+.idea
+.DS_Store
+
+# Tests & scratch — not shipped in the image; multi-stage rebuilds them
+# from src/ as needed.
+tests
+evals
+scripts
+docs
+.scratch
+*.log
+
+Dockerfile
+.dockerignore
+docker-compose.yml

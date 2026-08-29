@@ -1,0 +1,28 @@
+WEBVTT - Fixture covering every parser quirk
+
+NOTE
+This is a NOTE block and must be skipped. It contains a --> that
+must not fool the timestamp scanner.
+
+STYLE
+::cue { color: yellow; }
+
+cue-1
+00:00.000 --> 00:02.500
+Hello, world.
+
+cue-2
+00:02.500 --> 00:05.000 align:start position:10%
+<v Alice>Hi <c.emphasis>everyone</c>!</v>
+
+00:05.000 --> 00:07.250
+<v.first Bob>Multi
+line cue with a <00:06.000>timestamp<00:06.500> tag inside.</v>
+
+01:00:00.000 --> 01:00:03.000
+Timestamp with hours segment.
+
+NOTE Another note, followed by an empty cue payload — must be dropped.
+
+00:10.000 --> 00:10.500
+<c>   </c>

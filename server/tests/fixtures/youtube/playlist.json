@@ -1,0 +1,11 @@
+{
+  "playlistId": "PLfixture0000000000",
+  "title": "Fixture Playlist",
+  "channelName": "Fixture Channel",
+  "totalItems": 3,
+  "items": [
+    { "videoId": "aaaaaaaaaaa", "title": "Video A", "durationSec": 120 },
+    { "videoId": "bbbbbbbbbbb", "title": "Video B", "durationSec": 300 },
+    { "videoId": "ccccccccccc", "title": "Video C", "durationSec": null }
+  ]
+}

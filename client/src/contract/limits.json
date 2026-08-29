@@ -1,0 +1,62 @@
+{
+  "version": "1.3.0",
+  "plans": {
+    "FREE": {
+      "maxWorkspaces": 10,
+      "maxSourcesPerWorkspace": 7,
+      "lifetimeTokens": 1000000,
+      "maxPromptWords": 5000,
+      "maxFileBytes": 10485760,
+      "maxPlaylistVideos": 20
+    },
+    "PRO": {
+      "maxWorkspaces": 100,
+      "maxSourcesPerWorkspace": null,
+      "lifetimeTokens": null,
+      "maxPromptWords": null,
+      "maxFileBytes": 104857600,
+      "maxPlaylistVideos": 200
+    },
+    "CUSTOM": {
+      "contactOnly": true,
+      "maxWorkspaces": null,
+      "maxSourcesPerWorkspace": null,
+      "lifetimeTokens": null,
+      "maxPromptWords": null,
+      "maxFileBytes": null,
+      "maxPlaylistVideos": null
+    }
+  },
+  "tunables": {
+    "chunking": {
+      "CHUNK_SIZE": 1000,
+      "CHUNK_OVERLAP": 100,
+      "VTT_CHUNK_TARGET_MS": 45000,
+      "EMBEDDING_TEXT_HEADER": true,
+      "VTT_TOPIC_GAP_MS": 30000
+    },
+    "retrieval": {
+      "denseTopK": 40,
+      "sparseTopK": 40,
+      "rrfK": 60,
+      "finalTopK": 8,
+      "maxPerSource": 4
+    },
+    "embedding": {
+      "EMBEDDING_DIMENSIONS": 1536
+    },
+    "bm25": {
+      "k1": 1.2,
+      "b": 0.75,
+      "fixedAvgDocLength": 256
+    },
+    "chatContext": {
+      "SUMMARY_INTERVAL": 8,
+      "RECENT_MESSAGE_WINDOW": 12
+    },
+    "webSearch": {
+      "MAX_PER_CHAT": 5,
+      "MAX_RESULTS": 5
+    }
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "$comment": "Golden pairs for the S13 retrieval eval harness. `expectedSourceTitleMatches` is any-of substring matching against source titles — case-insensitive. Update alongside the seed data in the eval workspace when either changes.",
+  "pairs": [
+    {
+      "id": "vtt-01",
+      "query": "Who says hi first in the transcript?",
+      "expectedSourceTitleMatches": ["every-quirk"],
+      "notes": "cue-2 speaker Alice"
+    },
+    {
+      "id": "vtt-02",
+      "query": "What does Bob say across multiple lines?",
+      "expectedSourceTitleMatches": ["every-quirk"]
+    },
+    {
+      "id": "vtt-03",
+      "query": "What happens at the one hour timestamp?",
+      "expectedSourceTitleMatches": ["every-quirk"]
+    },
+    {
+      "id": "vtt-04",
+      "query": "Which speakers appear in the fixture?",
+      "expectedSourceTitleMatches": ["every-quirk"]
+    },
+    {
+      "id": "yt-01",
+      "query": "youtube video summary of the transcript",
+      "expectedSourceTitleMatches": ["youtube", "video"]
+    },
+    {
+      "id": "yt-02",
+      "query": "What are the main topics of the youtube playlist?",
+      "expectedSourceTitleMatches": ["playlist"]
+    },
+    {
+      "id": "yt-03",
+      "query": "What is the speaker saying about design?",
+      "expectedSourceTitleMatches": ["youtube", "video"]
+    },
+    {
+      "id": "web-01",
+      "query": "What does the example scrape describe?",
+      "expectedSourceTitleMatches": ["example", "scrape"]
+    },
+    {
+      "id": "web-02",
+      "query": "landing page contents for example.com",
+      "expectedSourceTitleMatches": ["example"]
+    },
+    {
+      "id": "web-03",
+      "query": "web article citation and section headers",
+      "expectedSourceTitleMatches": ["example", "scrape"]
+    },
+    {
+      "id": "pdf-01",
+      "query": "abstract of the pdf on retrieval augmented generation",
+      "expectedSourceTitleMatches": ["rag", "retrieval"]
+    },
+    {
+      "id": "pdf-02",
+      "query": "figures and captions from the RAG paper",
+      "expectedSourceTitleMatches": ["rag", "retrieval"]
+    },
+    {
+      "id": "pdf-03",
+      "query": "conclusion of the retrieval paper",
+      "expectedSourceTitleMatches": ["rag", "retrieval"]
+    },
+    {
+      "id": "pdf-04",
+      "query": "table of contents of the deep learning textbook",
+      "expectedSourceTitleMatches": ["deep", "learning"]
+    },
+    {
+      "id": "pdf-05",
+      "query": "chapter on convolutional neural networks",
+      "expectedSourceTitleMatches": ["deep", "learning", "cnn"]
+    },
+    {
+      "id": "text-01",
+      "query": "introduction paragraph of the notes.txt",
+      "expectedSourceTitleMatches": ["notes"]
+    },
+    {
+      "id": "text-02",
+      "query": "todo list from meeting notes",
+      "expectedSourceTitleMatches": ["notes", "meeting"]
+    },
+    {
+      "id": "cross-01",
+      "query": "which sources mention transformers?",
+      "expectedSourceTitleMatches": ["transformer", "attention"]
+    },
+    {
+      "id": "cross-02",
+      "query": "what do the sources say about embeddings?",
+      "expectedSourceTitleMatches": ["embed", "vector"]
+    },
+    {
+      "id": "neg-01",
+      "query": "cryptocurrency price prediction in 2030",
+      "expectedSourceTitleMatches": [],
+      "notes": "empty expectations exercise the no-match path"
+    },
+    {
+      "id": "iso-01",
+      "query": "content only present in workspace B",
+      "expectedSourceTitleMatches": [],
+      "notes": "manual isolation smoke check"
+    },
+    {
+      "id": "cite-01",
+      "query": "which page mentions maximal marginal relevance?",
+      "expectedSourceTitleMatches": ["rag", "retrieval"]
+    },
+    {
+      "id": "cite-02",
+      "query": "timestamp of the note about hybrid search",
+      "expectedSourceTitleMatches": ["every-quirk", "youtube"]
+    },
+    {
+      "id": "cite-03",
+      "query": "url section discussing benchmark numbers",
+      "expectedSourceTitleMatches": ["example", "scrape"]
+    }
+  ]
+}

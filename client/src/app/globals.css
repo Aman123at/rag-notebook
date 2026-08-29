@@ -1,0 +1,535 @@
+@layer theme, base, clerk, components, utilities;
+
+@import "tailwindcss";
+
+@source not "../../docs";
+
+@theme static {
+  /* ---- Ground: midnight enamel, lit rather than dim ---- */
+  --color-enamel: #0b1230; /* page ground */
+  --color-enamel-deep: #070b1f; /* wells, scrims, inset fields */
+  --color-enamel-raised: #111a3d; /* chassis card interior */
+  --color-enamel-high: #17224d; /* hovered rows, menus */
+
+  --color-porcelain: #ffffff; /* primary text, ticks, hairlines */
+  --color-porcelain-dim: #9bb0d4; /* secondary text     · 8.36:1 */
+
+  /* ---- The eight line inks. Stroke value + text tint, in pairs. ---- */
+  --color-line-scarlet: #e21d2d;
+  --color-line-scarlet-text: #ff6b63; /*  6.59:1 */
+  --color-line-cobalt: #1e5bff;
+  --color-line-cobalt-text: #7ba4ff; /*  7.52:1 */
+  --color-line-amber: #ffc20e;
+  --color-line-amber-text: #ffc20e; /* 11.35:1 — passes raw */
+  --color-line-green: #22b14c;
+  --color-line-green-text: #5fd97f; /* 10.25:1 */
+  --color-line-violet: #8b5cf6;
+  --color-line-violet-text: #c4a9ff; /*  9.15:1 */
+  --color-line-teal: #00a8a8;
+  --color-line-teal-text: #4fd6d6; /* 10.43:1 */
+  --color-line-orange: #ff6a13;
+  --color-line-orange-text: #ff9e63; /*  9.03:1 */
+  --color-line-magenta: #e5399b;
+  --color-line-magenta-text: #ff7abf; /*  7.69:1 */
+
+  /* ---- Semantic aliases. Every component reads these. ---- */
+  --color-bg: var(--color-enamel);
+  --color-surface: var(--color-enamel-raised);
+  --color-surface-2: var(--color-enamel-high);
+  --color-well: var(--color-enamel-deep);
+  --color-border: color-mix(in oklab, var(--color-porcelain) 22%, transparent);
+  --color-border-strong: color-mix(in oklab, var(--color-porcelain) 42%, transparent);
+  --color-fg: var(--color-porcelain);
+  --color-fg-muted: var(--color-porcelain-dim);
+
+  /* Primary action rides the cobalt line. Porcelain on cobalt is 5.26:1. */
+  --color-accent: var(--color-line-cobalt);
+  --color-accent-fg: var(--color-porcelain);
+
+  /* Service status. Each is paired with an icon and a word in the markup —
+     colour is never the sole channel. */
+  --color-success: var(--color-line-green);
+  --color-success-text: var(--color-line-green-text);
+  --color-warning: var(--color-line-amber);
+  --color-warning-text: var(--color-line-amber-text);
+  --color-danger: var(--color-line-scarlet);
+  --color-danger-text: var(--color-line-scarlet-text);
+
+  /* Citations are stations. Until R3 assigns per-source inks, the default
+     station ink is amber — the one ink that reads as text unmodified. */
+  --color-citation: var(--color-line-amber);
+  --color-citation-text: var(--color-line-amber-text);
+  --color-citation-surface: color-mix(in oklab, var(--color-line-amber) 12%, var(--color-enamel-deep));
+
+  /* Out-of-network: web-retrieved evidence, dashed and outside the enamel. */
+  --color-offnet: var(--color-porcelain-dim);
+
+  /* ---- Type. Faces verified against
+     node_modules/next/dist/compiled/@next/font/dist/google/index.d.ts ---- */
+  --font-display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-overpass), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-spline-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ---- Chassis geometry ---- */
+  --radius-tick: 999px; /* station dots, small pills */
+  --radius-control: 8px;
+  --radius-chassis: 14px;
+  --spine-width: 3px;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  color-scheme: dark;
+  font-family: var(--font-body);
+}
+
+/* Display voice: Archivo at expanded width, tracked caps. The wdth axis is
+   real — it ships in the variable font, so this is not synthetic stretching. */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 112;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* Wayfinding labels: small, tracked, caps. Never used as a kicker above a
+   heading — only as a standalone field label or column header. */
+.label-track {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+/* Every locator, timecode, token count and request id. Tabular by default so
+   figures align in a column the way a departure board's do. */
+.font-mono,
+code,
+kbd,
+pre,
+samp,
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Browser surfaces. The parts we did not draw still carry the design.
+   --------------------------------------------------------------------------- */
+
+::selection {
+  background: color-mix(in oklab, var(--color-line-cobalt) 55%, transparent);
+  color: var(--color-porcelain);
+}
+
+:root {
+  accent-color: var(--color-line-cobalt);
+  caret-color: var(--color-line-cobalt-text);
+  scrollbar-color: color-mix(in oklab, var(--color-porcelain) 26%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-porcelain) 22%, transparent);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-porcelain) 38%, transparent);
+  background-clip: content-box;
+}
+
+/* Focus uses the cobalt TEXT tint (7.52:1), not raw cobalt (3.49:1), so the
+   ring is unmistakable against the enamel ground. */
+*:focus-visible {
+  outline: 2px solid var(--color-line-cobalt-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   The system's own components.
+   --------------------------------------------------------------------------- */
+
+/* Chassis card — the porcelain-hairline enclosure from the reference board.
+   Elevation is declared ONCE, as a border. No shadow underneath it. */
+.chassis {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-chassis);
+}
+
+/* Route spine — a line running down a card with station dots on it. This is
+   the system's core geometry, not a coloured left border: it always carries
+   ticks, and it always represents an actual line. */
+.route-spine {
+  position: relative;
+  padding-left: 1.5rem;
+}
+/* A stop on the line: a porcelain ring sitting ON the spine, one per citation.
+   Without these the spine is a coloured border-left and nothing more, which is
+   the side stripe the craft floor refuses — the ticks are what make it a line. */
+.route-stop {
+  position: relative;
+}
+.route-stop::before {
+  content: "";
+  position: absolute;
+  left: -1.43rem;
+  top: 0.42em;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 2.5px solid var(--color-porcelain);
+  background: var(--color-bg);
+}
+/* The terminus: the last stop on a line is filled, the way a route diagram
+   marks where the journey ends. */
+.route-stop:last-child::before {
+  background: var(--color-porcelain);
+}
+.route-spine[data-offnet="true"] .route-stop::before {
+  border-color: var(--color-offnet);
+  background: var(--color-bg);
+}
+.route-spine[data-offnet="true"] .route-stop:last-child::before {
+  background: var(--color-offnet);
+}
+.route-spine::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: var(--spine-width);
+  border-radius: 999px;
+  background: var(--spine-ink, var(--color-line-cobalt));
+}
+/* An out-of-network line is drawn, not filled: web evidence is visibly not
+   part of this workspace's network. */
+.route-spine[data-offnet="true"]::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--color-offnet) 0 6px,
+    transparent 6px 11px
+  );
+}
+
+/* Station tick — a porcelain ring sitting on the line. Filled when active. */
+.station-tick {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 2.5px solid var(--color-porcelain);
+  background: var(--color-bg);
+  flex: none;
+}
+.station-tick[data-active="true"] {
+  background: var(--color-porcelain);
+}
+.station-tick[data-interchange="true"] {
+  width: 15px;
+  height: 15px;
+  border-width: 3px;
+}
+
+/* Enamel watermark — the faint network texture behind the ground. Decorative,
+   never behind reading content. */
+.enamel-watermark {
+  background-image:
+    linear-gradient(115deg, transparent 48%, color-mix(in oklab, var(--color-line-cobalt) 18%, transparent) 48% 49%, transparent 49%),
+    linear-gradient(65deg, transparent 62%, color-mix(in oklab, var(--color-line-cobalt) 14%, transparent) 62% 63%, transparent 63%),
+    linear-gradient(155deg, transparent 30%, color-mix(in oklab, var(--color-porcelain) 7%, transparent) 30% 30.8%, transparent 31%);
+  background-size: 340px 340px, 520px 520px, 260px 260px;
+  opacity: 0.5;
+}
+
+/* Citations. In R3 each marker takes its source's line ink via --station-ink;
+   the fallback keeps the pre-R3 surfaces coherent. */
+.citation-marker {
+  color: var(--station-ink-text, var(--color-citation-text));
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, currentColor 55%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+/* The tick that makes a citation a STATION rather than a coloured word. It
+   carries the source's ink, so the colour naming the line in the route strip
+   is the same colour naming it inline in the prose.
+
+   It hangs off the RAISED locator, not off the anchor: on the anchor it lands
+   on the text baseline while the locator rides above it, and reads as a stray
+   bullet dropped into the sentence. */
+.citation-marker > sup::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  margin-right: 0.3em;
+  vertical-align: 0.22em;
+}
+/* The model decides where markers land, and it frequently emits two in a row
+   with nothing between them. Without brackets they would collide, so the gap
+   is the stylesheet's job, not the model's. */
+.citation-marker {
+  margin-left: 0.12em;
+}
+.citation-marker + .citation-marker {
+  margin-left: 0.4em;
+}
+.citation-marker:hover,
+.citation-marker:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+/* Station tag — one stop on the route strip. Same object as the inline
+   marker, given room to breathe: tick, locator, tap target. */
+.station-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid;
+  border-radius: var(--radius-tick);
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: background-color 150ms ease-out;
+}
+.station-tag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  background: currentColor;
+}
+.station-tag:hover {
+  background-color: color-mix(in oklab, currentColor 16%, transparent);
+}
+/* Out-of-network stops are hollow: web evidence is visibly not one of the
+   user's own sources. */
+.station-tag[data-offnet="true"] {
+  border-style: dashed;
+}
+.station-tag[data-offnet="true"]::before {
+  background: transparent;
+  border: 1.5px solid currentColor;
+}
+
+/* PDF.js text layer: the cited passage washed in the station's ink. */
+.citation-text-layer {
+  overflow: hidden;
+}
+.citation-text-layer > span {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  transform-origin: 0% 0%;
+}
+.citation-text-layer .citation-highlight {
+  background-color: color-mix(in oklab, var(--color-citation) 45%, transparent);
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion. The world's native motion is the board updating in place: one
+   authored moment (a route drawing along its line), not scattered effects.
+   --------------------------------------------------------------------------- */
+
+@keyframes route-draw {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.route-draw {
+  animation: route-draw 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Live arrivals — a service running along its track while the answer is being
+   assembled. The one place in the product where motion is literally the
+   message: something is on its way. */
+@keyframes arrivals-run {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(360%);
+  }
+}
+
+.arrivals-track {
+  position: relative;
+  overflow: hidden;
+  height: var(--spine-width);
+  width: 72px;
+  flex: none;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-porcelain) 14%, transparent);
+}
+.arrivals-track::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 28%;
+  border-radius: 999px;
+  background: var(--arrivals-ink, var(--color-line-amber));
+  animation: arrivals-run 1.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* The global kill-switch above would freeze the travelling segment at its
+     END transform, i.e. off the track and invisible. Give it a resting state
+     that still reads as "in progress". */
+  .arrivals-track::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.55;
+  }
+  /* The resting state is the visible one. */
+  .route-draw {
+    animation: none;
+    clip-path: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Marketing surfaces (rebuilt in R6; these keep the pre-R6 page coherent on
+   the new palette rather than describing its final form).
+   --------------------------------------------------------------------------- */
+
+.marketing-bloom {
+  background:
+    radial-gradient(
+      60% 50% at 50% 0%,
+      color-mix(in oklab, var(--color-line-cobalt) 22%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      40% 40% at 80% 20%,
+      color-mix(in oklab, var(--color-line-scarlet) 10%, transparent) 0%,
+      transparent 70%
+    );
+}
+
+/* Two branches off the section, not one line drawn twice. Each column carries
+   its own ink and ends on a filled terminus, which is how a route diagram says
+   "this line stops here" — the first version used identical amber in both
+   columns with open rings throughout, so the two branches were indistinguishable
+   and neither appeared to end anywhere. */
+.marketing-branch .marketing-stop {
+  position: relative;
+  padding-left: 1.75rem;
+  --branch-ink: var(--color-line-amber);
+}
+.marketing-branch .marketing-stop:nth-child(even) {
+  --branch-ink: var(--color-line-teal);
+}
+.marketing-branch .marketing-stop::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  bottom: -1.75rem;
+  width: var(--spine-width);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--branch-ink) 40%, transparent);
+}
+/* The last stop in each column terminates its own branch. */
+.marketing-branch .marketing-stop:last-child::before,
+.marketing-branch .marketing-stop:nth-last-child(2)::before {
+  bottom: 0.55rem;
+}
+.marketing-branch .marketing-stop::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 0.45rem;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 2.5px solid var(--branch-ink);
+  background: var(--color-bg);
+}
+.marketing-branch .marketing-stop:last-child::after,
+.marketing-branch .marketing-stop:nth-last-child(2)::after {
+  background: var(--branch-ink);
+}
+/* One column below the grid breakpoint: one branch, one terminus. */
+@media (max-width: 639px) {
+  .marketing-branch .marketing-stop:nth-child(even) {
+    --branch-ink: var(--color-line-amber);
+  }
+  .marketing-branch .marketing-stop:nth-last-child(2)::before {
+    bottom: -1.75rem;
+  }
+  .marketing-branch .marketing-stop:nth-last-child(2)::after {
+    background: var(--color-bg);
+  }
+}
+
+/* Entrance reveal for the landing page. Exponential ease-out from a state
+   that is already legible, so nothing is hidden by animation timing. */
+@keyframes marketing-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.marketing-reveal {
+  animation: marketing-reveal 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reveal-delay-2 {
+  animation-delay: 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-reveal {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "markdown": "# Example Domain\n\nThis domain is for use in illustrative examples in documents.\n\n## More information\n\nYou may use this domain in literature without prior coordination or asking for permission.\n\n### Contact\n\n[More information...](https://www.iana.org/domains/example)\n",
+  "metadata": {
+    "title": "Example Domain",
+    "description": "A canonical example page.",
+    "language": "en",
+    "statusCode": 200,
+    "url": "https://example.com/"
+  }
+}

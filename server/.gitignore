@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vitest/
+.tsbuildinfo
+
+# Disposable retrieval-eval harness
+evals/
+.claude
+docs
+contract
+drizzle

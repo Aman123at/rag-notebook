@@ -1,0 +1,283 @@
+# =============================================================================
+# RAG Notebook — PRODUCTION stack (single VPS, Traefik edge)
+#
+#   ragnotebookai.online       → client  (Next.js, container port 3000)
+#   api.ragnotebookai.online   → server  (Express API, container port 8080)
+#
+# Postgres and Qdrant are NOT published to the host — they are reachable only
+# on the internal Docker network. Only Traefik binds 80/443.
+#
+# Usage — note `--env-file variables.env` on EVERY command. Compose only reads
+# `.env` by default; values in an `env_file:` block are injected into containers
+# but are NOT available for ${...} interpolation in this file. Omitting the flag
+# fails loudly rather than deploying something half-configured.
+#
+#   cp variables.env.example variables.env && chmod 600 variables.env
+#   docker compose --env-file variables.env -f docker-compose.prod.yml pull
+#   docker compose --env-file variables.env -f docker-compose.prod.yml \
+#       --profile migrate run --rm migrate
+#   docker compose --env-file variables.env -f docker-compose.prod.yml up -d
+#
+# DNS, before the first `up`: both records must point at this VPS's public IP,
+# or the Let's Encrypt HTTP-01 challenge fails.
+#   A  ragnotebookai.online      -> <VPS_IP>
+#   A  api.ragnotebookai.online  -> <VPS_IP>
+#   A  www.ragnotebookai.online  -> <VPS_IP>   (optional, for the www redirect)
+# =============================================================================
+
+name: rag-notebook
+
+networks:
+  # Edge network: only Traefik and the two HTTP-facing services join it.
+  web:
+    name: rag-notebook-web
+  # Backend network: databases live here, never exposed to the edge.
+  internal:
+    name: rag-notebook-internal
+    internal: true
+
+volumes:
+  postgres_data:
+    name: rag-notebook-postgres-data
+  qdrant_data:
+    name: rag-notebook-qdrant-data
+  traefik_acme:
+    name: rag-notebook-traefik-acme
+
+# -----------------------------------------------------------------------------
+# Shared server configuration. The server and the one-shot migrate job run the
+# same image with the same env, so they are defined once here.
+# -----------------------------------------------------------------------------
+x-server-env: &server-env
+  NODE_ENV: production
+  PORT: '8080'
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # Public origin of the API itself — used for absolute URLs and by Inngest
+  # when it registers this app's serve endpoint.
+  APP_URL: https://api.ragnotebookai.online
+  # CORS allowlist. The browser origin is the client domain, not the API's.
+  CLIENT_ORIGINS: https://ragnotebookai.online,https://www.ragnotebookai.online
+  # Service names resolve on the internal network — no host ports needed.
+  DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-rag_notebook}
+  QDRANT_URL: http://qdrant:6333
+  # Inngest cloud mode. NODE_ENV=production already implies it; INNGEST_DEV=0
+  # states it explicitly so nothing can silently fall back to the dev server.
+  INNGEST_DEV: '0'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Traefik — API gateway, reverse proxy, and TLS termination.
+  # ---------------------------------------------------------------------------
+  traefik:
+    image: traefik:v3.3
+    container_name: rag-notebook-traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      # Nothing is routed unless it opts in with `traefik.enable=true`.
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=rag-notebook-web
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # Every plain-HTTP request is redirected to HTTPS at the entrypoint,
+      # so individual services never need their own redirect middleware.
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      # Let's Encrypt via the HTTP-01 challenge on the `web` entrypoint.
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      # Uncomment while testing DNS/firewall to avoid Let's Encrypt rate limits,
+      # then comment out and delete the acme volume before going live.
+      # - --certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+      - --accesslog=true
+      - --log.level=INFO
+      # Dashboard is deliberately off: exposing it needs auth we don't have here.
+      - --api.dashboard=false
+      # Required by the healthcheck below. Serves /ping on the built-in
+      # `traefik` entrypoint (:8080), which is NOT published to the host — it is
+      # reachable only from inside the container, which is all `docker exec`
+      # needs. Without this flag the healthcheck gets connection-refused and the
+      # container sits permanently `unhealthy`.
+      - --ping=true
+      - --global.checknewversion=false
+      - --global.sendanonymoususage=false
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      # Read-only socket: Traefik only needs to *read* container labels.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_acme:/letsencrypt
+    networks:
+      - web
+    healthcheck:
+      test: ['CMD', 'traefik', 'healthcheck', '--ping']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    labels:
+      - traefik.enable=false
+
+  # ---------------------------------------------------------------------------
+  # Postgres — internal only.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16
+    container_name: rag-notebook-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-rag_notebook}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rag_notebook}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    labels:
+      - traefik.enable=false
+
+  # ---------------------------------------------------------------------------
+  # Qdrant — internal only.
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    container_name: rag-notebook-qdrant
+    restart: unless-stopped
+    environment:
+      # Set QDRANT_API_KEY in variables.env to require auth even on the
+      # internal network; the server sends the same value.
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD-SHELL', 'bash -c ">/dev/tcp/localhost/6333"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    labels:
+      - traefik.enable=false
+
+  # ---------------------------------------------------------------------------
+  # Server — api.ragnotebookai.online
+  # ---------------------------------------------------------------------------
+  server:
+    image: amantiwari7974/rag-notebook-server:v1
+    container_name: rag-notebook-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    env_file:
+      - variables.env
+    # These win over variables.env — they are stack topology, not secrets.
+    environment: *server-env
+    networks:
+      - web
+      - internal
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "node -e \"require('http').get('http://localhost:8080/api/v1/healthz', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=rag-notebook-web
+      - traefik.http.routers.server.rule=Host(`api.ragnotebookai.online`)
+      - traefik.http.routers.server.entrypoints=websecure
+      - traefik.http.routers.server.tls=true
+      - traefik.http.routers.server.tls.certresolver=le
+      - traefik.http.services.server.loadbalancer.server.port=8080
+      # HSTS + basic hardening at the edge. `trust proxy` is already on in the
+      # app, so X-Forwarded-* from Traefik is honoured for client IPs.
+      - traefik.http.middlewares.api-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.api-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.api-headers.headers.forceSTSHeader=true
+      - traefik.http.routers.server.middlewares=api-headers@docker
+
+  # ---------------------------------------------------------------------------
+  # Client — ragnotebookai.online (+ www redirect)
+  #
+  # NEXT_PUBLIC_* values are baked into the JS bundle at BUILD time. This image
+  # must have been built with the production values (see variables.env.example)
+  # — setting them here at runtime does nothing for the browser bundle.
+  # ---------------------------------------------------------------------------
+  client:
+    image: amantiwari7974/rag-notebook-client:v1
+    container_name: rag-notebook-client
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    # No `env_file` here on purpose: the client must not receive the database
+    # password, OpenAI key or Razorpay secrets. Next.js needs exactly one
+    # server-side secret at runtime, and it is named explicitly.
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?CLERK_SECRET_KEY is required}
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=rag-notebook-web
+      - traefik.http.routers.client.rule=Host(`ragnotebookai.online`)
+      - traefik.http.routers.client.entrypoints=websecure
+      - traefik.http.routers.client.tls=true
+      - traefik.http.routers.client.tls.certresolver=le
+      - traefik.http.services.client.loadbalancer.server.port=3000
+      - traefik.http.middlewares.app-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.app-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.app-headers.headers.forceSTSHeader=true
+      - traefik.http.routers.client.middlewares=app-headers@docker
+      # www → apex, 308. Keeps one canonical origin so the Clerk and CORS
+      # allowlists only ever need to name the apex.
+      - traefik.http.routers.client-www.rule=Host(`www.ragnotebookai.online`)
+      - traefik.http.routers.client-www.entrypoints=websecure
+      - traefik.http.routers.client-www.tls=true
+      - traefik.http.routers.client-www.tls.certresolver=le
+      - traefik.http.routers.client-www.service=client
+      - traefik.http.middlewares.www-to-apex.redirectregex.regex=^https://www\.ragnotebookai\.online/(.*)
+      - traefik.http.middlewares.www-to-apex.redirectregex.replacement=https://ragnotebookai.online/$${1}
+      - traefik.http.middlewares.www-to-apex.redirectregex.permanent=true
+      - traefik.http.routers.client-www.middlewares=www-to-apex@docker
+
+  # ---------------------------------------------------------------------------
+  # One-shot Drizzle migration job. Not part of `up` — run it explicitly on
+  # every deploy that ships new migrations, before the new server starts:
+  #   docker compose -f docker-compose.prod.yml --profile migrate run --rm migrate
+  # ---------------------------------------------------------------------------
+  migrate:
+    image: amantiwari7974/rag-notebook-server:v1
+    container_name: rag-notebook-migrate
+    profiles: ['migrate']
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - variables.env
+    environment: *server-env
+    networks:
+      - internal
+    command: ['node', 'dist/db/migrate.js']
+    labels:
+      - traefik.enable=false
