@@ -28,6 +28,7 @@
 | [The contract](#the-contract-single-source-of-truth) | How client and server stay in sync |
 | [Ingestion pipeline](#ingestion-pipeline) | File → chunks → vectors |
 | [Retrieval and the chat turn](#retrieval-and-the-chat-turn) | Hybrid search → grounded answer |
+| [Podcast](#podcast-workspace-audio-overview) | Sources → two-host audio overview |
 | [Data model](#data-model) | Tables and what owns what |
 | [Security model](#security-model) | Tenancy, prompt injection, guards |
 | [Entitlements and billing](#entitlements-and-billing) | Plans, tokens, reservations |
@@ -275,6 +276,53 @@ finalize         persist messages, keep only cited sources, commit tokens
 
 The stream is defensive by construction: heartbeats keep proxies from closing it, a 5-minute cap aborts a runaway turn, and a client disconnect persists the partial answer with `finishReason: "aborted"` and releases the reservation. A turn that dies never silently bills you.
 
+## Podcast: workspace audio overview
+
+A **podcast** is one ~5-minute, two-host audio overview per workspace (unique on `workspace_id`), generated on demand from every ready source — the Gemini/NotebookLM-style "listen to your notebook" feature. Regenerating supersedes the previous one. Like ingestion it runs as an **Inngest** durable function (`generate-podcast`), one job per user, each stage a checkpointed `step.run`.
+
+```
+   POST /workspaces/:id/podcast   (slot + ready-source gate → 202 PENDING)
+        │
+        ▼
+   ┌──────────┐  READY sources only · playlists → ≤5 READY children
+   │ ASSEMBLE │  · newest-first, capped at 15
+   └────┬─────┘
+        │  per source: reserve → summarise (~120 words) → commit tokens
+        ▼
+   ┌──────────┐  one LLM writes BOTH hosts (Maya / Ravi) as a turn list
+   │ SCRIPTING│  · validated against PodcastScriptSchema · 1 corrective retry
+   └────┬─────┘  · target ~800 words, hard ceiling 1400
+        │
+        ▼
+   ┌──────────────┐  OpenAI gpt-4o-mini-tts · fixed voice per host
+   │ SYNTHESIZING │  · one request per turn · bounded fan-out (8) · per-turn retry
+   └──────┬───────┘
+          │  MP3 fragments (24 kHz / 128 kbps CBR mono)
+          ▼
+   ┌──────────┐  in-process frame-concatenation + duration walk (no ffmpeg)
+   │ CONCAT   │  → Cloudinary raw authenticated upload
+   └────┬─────┘
+        ▼
+     ┌─────┐  audioUrl is a freshly-signed inline URL, minted per GET
+     │READY│
+     └─────┘
+```
+
+Notable details:
+
+- **One LLM plays both hosts.** A single completion emits the whole script as a list of `{ speaker, text }` turns — `HOST_A`/`HOST_B` are *roles* (Maya asks and drives; Ravi explains and synthesises), mapped to display names and fixed TTS voices only at the edge, so renaming a host never touches the schema. The script is validated against a Zod `PodcastScriptSchema` (per-turn ≤600 chars so each turn is a single TTS request; total word count bounded) with exactly one corrective retry before the job fails.
+- **No ffmpeg.** `gpt-4o-mini-tts` returns tag-free, constant-bitrate MP3 with the bit reservoir unused, so the fragments concatenate byte-wise into a valid stream. A pure frame-walker (`integrations/mp3.ts`) validates each fragment's MPEG frame header, strips any ID3, joins them, and measures duration by summing `samples / sampleRate` across frames. Validated against a real decoder (`afinfo`) to the decimal.
+- **Two-phase token reservation**, same discipline as ingestion: each per-source summary reserves `COMPLETION` tokens up front and commits actual usage (or releases on failure), so a quota shortfall fails the job cleanly with a typed reason rather than half-generating.
+- **Typed failures.** The `FAILED` status carries one of `no_usable_sources`, `script_generation_failed`, or `synthesis_failed`; `FAILED` is terminal and occupies no slot.
+- **Staleness is display-only.** Adding or deleting a source marks the podcast `isStale` with reason `SOURCES_CHANGED` (via an event-driven `mark-podcast-stale` function on `source/ingest.completed` and source deletion). It never triggers regeneration — the user decides.
+- **Cleanup can't leak a slot.** A workspace is soft-deleted, so the FK cascade never fires; the `cleanup` cascade therefore hard-deletes the podcast row and destroys its Cloudinary asset explicitly, at both workspace and user scope.
+
+**Entitlement.** Podcasts use a *concurrent-slot* cap (a live count, not a lifetime budget): **FREE = 1, PRO = 10, CUSTOM = unlimited**, counted across all of a user's workspaces. Deleting a podcast frees its slot immediately.
+
+**API.** `GET` (returns the podcast or `null`, minting a fresh signed `audioUrl` when READY), `POST` (202 with the PENDING podcast; enforces the slot cap and requires ≥1 ready source), `DELETE` (hard-delete + asset destroy). The wire shape is **audio only** — no script, no citations; the script lives server-side in a JSONB column for diagnostics.
+
+**Client.** A `WorkspacePodcast` panel pinned to the top of the workspace page renders every lifecycle state — absent, producing (TanStack Query self-polls every 2.5s while PENDING/SCRIPTING/SYNTHESIZING), ready (native `<audio>` + duration), failed, and stale — with delete and regenerate behind a confirm dialog.
+
 ---
 
 ## Data model
@@ -289,6 +337,7 @@ Postgres via **Drizzle ORM**, migrations in `server/drizzle/`.
 | `chunks` | Chunk text, `embedding_text`, token count, JSONB `locator`, generated `locator_kind` column, doc length for BM25 |
 | `chats` / `messages` | Conversations, rolling `summary`, per-message model, finish reason, citations, reactions |
 | `artifacts` | Generated documents (roadmaps) with status, content, tokens consumed |
+| `podcasts` | One per workspace; status, signed-audio metadata, duration, JSONB script, stale flag. Slot-capped per plan. |
 | `token_reservations` | Two-phase token holds — `reserve → commit` or `release`, swept on expiry |
 | `usage` | Daily token rollups powering the usage chart |
 | `billing` | Subscriptions, orders, coupons, redemptions |
