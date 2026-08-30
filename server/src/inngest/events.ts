@@ -75,6 +75,13 @@ export const ArtifactGenerateRequested = z.object({
 });
 export type ArtifactGenerateRequested = z.infer<typeof ArtifactGenerateRequested>;
 
+export const PodcastGenerateRequested = z.object({
+  podcastId: uuid,
+  workspaceId: uuid,
+  userId: uuid,
+});
+export type PodcastGenerateRequested = z.infer<typeof PodcastGenerateRequested>;
+
 export const EVENT_SCHEMAS = {
   'source/ingest.requested': SourceIngestRequested,
   'source/ingest.completed': SourceIngestCompleted,
@@ -86,6 +93,7 @@ export const EVENT_SCHEMAS = {
   'chat/summarize.requested': ChatSummarizeRequested,
   'maintenance/reservations.sweep': ReservationsSweep,
   'artifact/generate.requested': ArtifactGenerateRequested,
+  'podcast/generate.requested': PodcastGenerateRequested,
 } as const;
 
 export type EventName = keyof typeof EVENT_SCHEMAS;

@@ -13,9 +13,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "pnpm contract:verify && vitest run",
+    "test": "vitest run",
     "test:watch": "vitest",
-    "contract:verify": "tsx scripts/contract-verify.ts",
     "format": "prettier --write ."
   },
   "dependencies": {

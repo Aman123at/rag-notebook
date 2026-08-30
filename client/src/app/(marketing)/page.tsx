@@ -9,6 +9,7 @@ import {
   Layers,
   Lock,
   MessageSquareQuote,
+  Radio,
   Server,
   Target,
 } from "lucide-react";
@@ -83,6 +84,10 @@ const FEATURES = [
     body: "Drop a video or a whole playlist. Transcripts are chunked on topic boundaries, so a citation lands on the moment, not the hour.",
   },
   {
+    title: "A workspace, told back as a podcast",
+    body: "Turn every ready source into a ~5-minute audio overview — two hosts talking through the material the way a briefing would. Generated on demand and streamed back as audio you can play anywhere.",
+  },
+  {
     title: "Web pages, kept as sources",
     body: "Add a URL and it becomes a first-class source in the workspace — retrieved, ranked, and cited like everything else.",
   },
@@ -126,6 +131,16 @@ const SECURITY = [
   },
 ] as const;
 
+/**
+ * Podcast slots are not in the vendored client limits contract yet — it predates
+ * the feature and can't be re-vendored in this tree — so these mirror
+ * `maxPodcasts` in the server contract's plan limits (a concurrent-slot count
+ * across all of a user's workspaces). Swap to `count(free.maxPodcasts)` once a
+ * contract drop publishes the field.
+ */
+const FREE_PODCASTS = 1;
+const PRO_PODCASTS = 10;
+
 const COMPARISON = [
   { label: "Workspaces", free: count(free.maxWorkspaces), pro: count(pro.maxWorkspaces) },
   {
@@ -139,6 +154,11 @@ const COMPARISON = [
     label: "Videos per playlist",
     free: count(free.maxPlaylistVideos),
     pro: count(pro.maxPlaylistVideos),
+  },
+  {
+    label: "Podcast overviews",
+    free: count(FREE_PODCASTS),
+    pro: count(PRO_PODCASTS),
   },
   { label: "Citations on every answer", free: "Included", pro: "Included" },
 ] as const;
@@ -182,6 +202,18 @@ export default function MarketingHome() {
                 headline and the free-plan line below already make, in tracked
                 caps the system reserves for wayfinding. The network mark opens
                 the page instead. */}
+            {/* Announcement banner — the newest capability, surfaced at the top
+                of the page rather than buried in the feature list below. */}
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] py-1.5 pl-1.5 pr-4">
+              <span className="rounded-full bg-[var(--color-line-cobalt)] px-2.5 py-0.5 font-display text-[0.625rem] uppercase tracking-[0.1em] text-[var(--color-porcelain)]">
+                New
+              </span>
+              <span className="flex items-center gap-1.5 text-sm text-[var(--color-fg-muted)]">
+                <Radio className="size-3.5 text-[var(--color-line-cobalt-text)]" aria-hidden="true" />
+                Two-host audio overviews of any workspace
+              </span>
+            </div>
+
             <Roundel size={40} className="text-[var(--color-line-cobalt-text)]" />
 
             <h1 className="text-balance text-4xl leading-[1.08] sm:text-5xl lg:text-6xl">

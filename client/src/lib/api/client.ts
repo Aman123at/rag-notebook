@@ -136,7 +136,9 @@ export function createApi(getToken: GetToken): Api {
     DELETE: (path, init) => run(() => raw.DELETE(path, init as never) as Promise<RawResult>),
     LIST: (path, init) => list(() => raw.GET(path, init as never) as Promise<RawResult>),
     gap: {
+      GET: (path, init) => run(() => gapRaw.GET(path, init as never) as Promise<RawResult>),
       POST: (path, init) => run(() => gapRaw.POST(path, init as never) as Promise<RawResult>),
+      DELETE: (path, init) => run(() => gapRaw.DELETE(path, init as never) as Promise<RawResult>),
     },
   };
 }

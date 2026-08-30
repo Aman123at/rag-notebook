@@ -52,15 +52,24 @@ export interface Api {
   ): Promise<ListResult<GetResult<P>>>;
 
   /**
-   * The two routes the vendored contract types describe incorrectly, called
-   * against the shapes the server actually accepts. Requests go through the
+   * Routes the vendored contract types describe incorrectly or omit entirely
+   * (the podcast family), called against the shapes the server actually
+   * accepts. Requests go through the
    * same middleware, envelope unwrapping and error mapping as everything else —
    * only the type they are checked against differs.
    */
   gap: {
+    GET<P extends PathsWithMethod<ContractGapPaths, "get">>(
+      path: P,
+      init?: FetchOptions<OpFor<ContractGapPaths[P], "get">>,
+    ): Promise<ResultOf<ContractGapPaths, P, "get">>;
     POST<P extends PathsWithMethod<ContractGapPaths, "post">>(
       path: P,
       init?: FetchOptions<OpFor<ContractGapPaths[P], "post">>,
     ): Promise<ResultOf<ContractGapPaths, P, "post">>;
+    DELETE<P extends PathsWithMethod<ContractGapPaths, "delete">>(
+      path: P,
+      init?: FetchOptions<OpFor<ContractGapPaths[P], "delete">>,
+    ): Promise<ResultOf<ContractGapPaths, P, "delete">>;
   };
 }

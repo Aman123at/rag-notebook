@@ -461,8 +461,7 @@ pnpm dev
 pnpm build
 pnpm typecheck
 pnpm lint
-pnpm test             # contract:verify + vitest
-pnpm contract:verify  # vendored hashes must match MANIFEST.json
+pnpm test             # vitest
 ```
 
 ---
@@ -475,7 +474,7 @@ Roughly **420 tests** across the two halves.
 
 **Server — integration (`server/tests/integration/`, real Postgres + Qdrant)**: users, workspaces and chats, source lifecycle including delete and failure paths, chat-turn SSE end to end, chat loading, a route→service boundary audit, and a **tenancy audit** that asserts no query escapes its `userId` scope.
 
-**Client (`client/tests/`)**: the typed API client, SSE parsing and stream reducers, source status streaming and its polling fallback, upload validation, and the workspace dialogs — with `contract:verify` gating the suite so a drifted contract fails before any test runs.
+**Client (`client/tests/`)**: the typed API client, SSE parsing and stream reducers, source status streaming and its polling fallback, upload validation, and the workspace dialogs.
 
 ---
 

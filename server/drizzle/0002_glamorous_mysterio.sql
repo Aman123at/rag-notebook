@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "chats_workspace_id_singleton_key" ON "chats" USING btree ("workspace_id") WHERE "chats"."deleted_at" IS NULL;
