@@ -21,7 +21,20 @@
  *
  * Each client in INNERTUBE_CLIENTS is tried in turn; they fail independently, so
  * the chain survives any one of them being throttled or retired.
+ *
+ * The hard limit: YouTube gates InnerTube on IP reputation, and answers requests
+ * from datacenter ranges (AWS/GCP/Azure/most VPS hosts) with a bot check —
+ * playabilityStatus LOGIN_REQUIRED, reason "Sign in to confirm you're not a bot".
+ * That is *not* an age gate, and treating it as one parks a perfectly ingestible
+ * video in a permanent failure state; see `isBotCheck` below and the BOT_CHECK
+ * branch in `youtube.ts`. No client, visitorData, or PO token reliably avoids it
+ * from a datacenter IP, so `YOUTUBE_PROXY_URL` exists to send just these requests
+ * (not the rest of the app's egress) through a residential proxy.
  */
+
+import { ProxyAgent } from 'undici';
+
+import { env } from '@/config/env.js';
 
 const INNERTUBE_URL = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -67,21 +80,19 @@ const INNERTUBE_CLIENTS: readonly InnertubeClient[] = [
     },
     userAgent: 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X)',
   },
-  {
-    id: 'ANDROID_VR',
-    clientName: 'ANDROID_VR',
-    clientNumber: '28',
-    clientVersion: '1.62.27',
-    extraContext: {
-      androidSdkVersion: 32,
-      deviceMake: 'Oculus',
-      deviceModel: 'Quest 3',
-      osName: 'Android',
-      osVersion: '12',
-    },
-    userAgent: 'com.google.android.apps.youtube.vr.oculus/1.62.27 (Linux; U; Android 12; GB) gzip',
-  },
 ];
+
+/**
+ * Clients deliberately absent, all measured against a known-good captioned video
+ * from an unblocked residential IP:
+ *   ANDROID_VR                      bot check, even unblocked — permanently dead
+ *   TVHTML5, WEB, MWEB              require a PO token; answer "reloaded"/unavailable
+ *   WEB_EMBEDDED_PLAYER, TVHTML5_SIMPLY_EMBEDDED_PLAYER
+ *                                   answer ERROR regardless of video
+ * Attaching visitorData revived none of them. Keeping a dead client in the chain
+ * costs a round trip and, worse, contributes a spurious LOGIN_REQUIRED to the
+ * evidence the caller classifies on.
+ */
 
 export interface CaptionCue {
   startMs: number;
@@ -103,6 +114,7 @@ export interface CaptionTrack {
  * from "we were blocked" (retryable).
  */
 export type CaptionFailureReason =
+  | 'BOT_CHECK'
   | 'LOGIN_REQUIRED'
   | 'NO_CAPTION_TRACKS'
   | 'UNREACHABLE'
@@ -118,6 +130,20 @@ export type CaptionOutcome =
     }
   | { ok: false; reason: CaptionFailureReason; detail: string };
 
+/**
+ * YouTube reports its bot check as LOGIN_REQUIRED, the same status it uses for
+ * genuinely age-restricted and members-only videos — but the two mean opposite
+ * things to us. A bot check says nothing about the video (it is about our IP's
+ * reputation) and clears on its own; an age gate is a permanent property of the
+ * video. Only the reason string separates them, so match on it.
+ *
+ * Note the apostrophe: YouTube sends U+2019 ("you\u2019re"), not an ASCII quote.
+ * Matching "not a bot" sidesteps the distinction entirely.
+ */
+export function isBotCheck(reason: string): boolean {
+  return /not a bot|confirm you.{0,3}re not|unusual traffic|automated queries/i.test(reason);
+}
+
 interface PlayerResponse {
   captions?: {
     playerCaptionsTracklistRenderer?: {
@@ -127,6 +153,47 @@ interface PlayerResponse {
   playabilityStatus?: { status?: string; reason?: string };
 }
 
+let proxyAgent: ProxyAgent | null = null;
+let proxyAgentUrl: string | null = null;
+
+/**
+ * Send YouTube traffic through YOUTUBE_PROXY_URL when one is configured.
+ *
+ * Scoped to this module on purpose. A residential proxy is metered and slow, and
+ * the bot check only applies to YouTube — routing the app's other egress (OpenAI,
+ * Qdrant, Clerk, Firecrawl) through it via a global HTTPS_PROXY would burn the
+ * quota on traffic that was never blocked.
+ */
+function proxyDispatcher(): ProxyAgent | undefined {
+  const url = env.YOUTUBE_PROXY_URL;
+  if (!url) return undefined;
+  if (!proxyAgent || proxyAgentUrl !== url) {
+    proxyAgent = new ProxyAgent(url);
+    proxyAgentUrl = url;
+  }
+  return proxyAgent;
+}
+
+/**
+ * Attach the proxy dispatcher to a fetch init.
+ *
+ * The cast is unavoidable and deliberately quarantined here: `undici` ships its
+ * own Dispatcher types while @types/node carries a separate `undici-types` copy,
+ * so the two ProxyAgent shapes are structurally identical but nominally
+ * incompatible. Keeping the cast in one helper leaves every call site's init
+ * object fully type-checked.
+ */
+function withProxy(init: RequestInit): RequestInit {
+  const dispatcher = proxyDispatcher();
+  if (!dispatcher) return init;
+  return { ...init, dispatcher } as unknown as RequestInit;
+}
+
+/** True when captions are being fetched through a proxy — for log context only. */
+export function isProxied(): boolean {
+  return Boolean(env.YOUTUBE_PROXY_URL);
+}
+
 /**
  * Fetch the best caption track for a video, trying each InnerTube client in turn.
  * Never throws: every failure path returns `{ ok: false }` so the caller can
@@ -134,6 +201,7 @@ interface PlayerResponse {
  */
 export async function fetchCaptionCues(videoId: string): Promise<CaptionOutcome> {
   const attempts: string[] = [];
+  let sawBotCheck = false;
   let sawEmptyTrackList = false;
   let sawLoginRequired = false;
   let sawUnavailable = false;
@@ -149,6 +217,11 @@ export async function fetchCaptionCues(videoId: string): Promise<CaptionOutcome>
 
     const status = payload.playabilityStatus?.status ?? 'UNKNOWN';
     const reason = payload.playabilityStatus?.reason ?? '';
+    if (status === 'LOGIN_REQUIRED' && isBotCheck(reason)) {
+      sawBotCheck = true;
+      attempts.push(`${client.id}: BOT_CHECK (${reason})`);
+      continue;
+    }
     if (status === 'LOGIN_REQUIRED' || status === 'AGE_VERIFICATION_REQUIRED') {
       sawLoginRequired = true;
       attempts.push(`${client.id}: ${status} (${reason})`);
@@ -193,16 +266,18 @@ export async function fetchCaptionCues(videoId: string): Promise<CaptionOutcome>
   }
 
   const detail = attempts.join('; ');
-  // An "OK, no tracks" answer is stronger evidence than another client erroring,
-  // so it wins the classification.
+  // Ordered by how much each answer tells us about the *video* rather than about
+  // us. "Playable, no tracks" and a real sign-in gate are facts about the video,
+  // so they outrank a bot check, which is only a fact about our IP this minute.
   if (sawEmptyTrackList) return { ok: false, reason: 'NO_CAPTION_TRACKS', detail };
   if (sawLoginRequired) return { ok: false, reason: 'LOGIN_REQUIRED', detail };
+  if (sawBotCheck) return { ok: false, reason: 'BOT_CHECK', detail };
   if (sawUnavailable) return { ok: false, reason: 'VIDEO_UNAVAILABLE', detail };
   return { ok: false, reason: 'UNREACHABLE', detail };
 }
 
 async function requestPlayer(videoId: string, client: InnertubeClient): Promise<PlayerResponse> {
-  const res = await fetch(INNERTUBE_URL, {
+  const res = await fetch(INNERTUBE_URL, withProxy({
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -228,7 +303,7 @@ async function requestPlayer(videoId: string, client: InnertubeClient): Promise<
       },
     }),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+  }));
   if (!res.ok) {
     throw new Error(`player endpoint responded ${res.status}`);
   }
@@ -240,10 +315,12 @@ async function downloadCaptionTrack(baseUrl: string, userAgent: string): Promise
   // than append, or YouTube keeps serving its original format.
   const url = new URL(baseUrl);
   url.searchParams.set('fmt', 'json3');
-  const res = await fetch(url, {
+  const res = await fetch(url, withProxy({
     headers: { 'Accept-Language': 'en-US,en;q=0.9', 'User-Agent': userAgent },
+    // The timedtext URL is issued to whoever asked the player for it, so it has
+    // to be fetched over the same egress path.
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+  }));
   if (!res.ok) {
     throw new Error(`responded ${res.status}`);
   }

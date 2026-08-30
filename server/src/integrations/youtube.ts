@@ -5,7 +5,7 @@ import { throwIngestionError } from '@/inngest/errors.js';
 import { logger } from '@/observability/logger.js';
 
 import { withTimeout } from './runtime.js';
-import { type CaptionOutcome, fetchCaptionCues } from './youtube-captions.js';
+import { type CaptionOutcome, fetchCaptionCues, isProxied } from './youtube-captions.js';
 
 const REQUEST_TIMEOUT_MS = 20_000;
 const PLAYLIST_PAGE_SIZE = 50;
@@ -118,6 +118,19 @@ async function classifyCaptionFailure(
   videoId: string,
   outcome: Extract<CaptionOutcome, { ok: false }>,
 ): Promise<never> {
+  if (outcome.reason === 'BOT_CHECK') {
+    // Never terminal. YouTube is rate-limiting our egress IP's reputation, which
+    // says nothing about this video — the same request from another IP, or from
+    // this one later, succeeds. Classifying it as PERMISSION_DENIED (as an
+    // age-gate lookalike) would strand an ingestible video in Failed forever.
+    const remedy = isProxied()
+      ? 'The configured YOUTUBE_PROXY_URL is being blocked too; it may need a residential exit.'
+      : 'Set YOUTUBE_PROXY_URL to a residential proxy if this persists — datacenter IPs are blocked by default.';
+    throwIngestionError(
+      'RATE_LIMITED',
+      `YouTube served a bot check for ${videoId} rather than captions. ${remedy} (${outcome.detail})`,
+    );
+  }
   if (outcome.reason === 'LOGIN_REQUIRED') {
     throwIngestionError(
       'PERMISSION_DENIED',
