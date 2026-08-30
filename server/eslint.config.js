@@ -23,7 +23,6 @@ const SERVICE_SDKS = [
   'openai',
   'razorpay',
   'svix',
-  'youtube-transcript',
 ];
 
 const noRepositoryLayer = {
