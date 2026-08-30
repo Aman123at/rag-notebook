@@ -25,6 +25,7 @@ import { memoryRealRoutes } from '@/routes/memory.route.js';
 import { messagesRealRoutes } from '@/routes/message.route.js';
 import { observabilityRealRoutes } from '@/routes/observability.route.js';
 import { opsRealRoutes } from '@/routes/ops.route.js';
+import { podcastsRealRoutes } from '@/routes/podcast.route.js';
 import { sourcesRealRoutes } from '@/routes/source.route.js';
 import { webhooksRealRoutes } from '@/routes/webhooks.route.js';
 import { workspacesRealRoutes } from '@/routes/workspaces.route.js';
@@ -92,6 +93,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     ...memoryRealRoutes,
     ...billingRealRoutes,
     ...artifactsRealRoutes,
+    ...podcastsRealRoutes,
   ]);
   app.use('/api/v1', apiRouter);
 

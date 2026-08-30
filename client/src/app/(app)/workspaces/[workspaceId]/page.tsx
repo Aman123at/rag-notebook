@@ -6,6 +6,7 @@ import { useSources } from "@/hooks/use-sources";
 import { useWorkspaceChat } from "@/hooks/use-workspace-chat";
 import { useSourceStatusStream } from "@/hooks/use-source-status-stream";
 import { Conversation } from "@/components/chat/conversation";
+import { WorkspacePodcast } from "@/components/podcast/workspace-podcast";
 
 /**
  * The workspace page IS the chat. One chat per workspace: the id is
@@ -63,6 +64,7 @@ export default function WorkspacePage() {
           {items.length} {items.length === 1 ? "source" : "sources"}
         </span>
       </header>
+      <WorkspacePodcast workspaceId={workspaceId} />
       {chat.isLoading || !chat.data ? (
         <div className="flex-1 p-6">
           <p role="status" className="text-sm text-[var(--color-fg-muted)]">

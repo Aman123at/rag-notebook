@@ -29,3 +29,6 @@ coverage/
 
 # Internal notes — not for publication
 CHANGES_MADE.md
+
+.scratch
+CONTEXT.md

@@ -22,6 +22,7 @@
 import type { paths } from "@/contract/types";
 import type { SuccessEnvelope } from "./types";
 import type { CreateSourceBody, Source } from "@/types/sources.types";
+import type { Podcast } from "@/types/podcast.types";
 
 export interface ContractGapPaths {
   /**
@@ -47,6 +48,36 @@ export interface ContractGapPaths {
       parameters: { path: { sourceId: string } };
       requestBody?: { content: { "application/json": Record<string, never> } };
       responses: { 200: { content: { "application/json": SuccessEnvelope<Source> } } };
+    };
+  };
+
+  /**
+   * The podcast routes are *absent* from the vendored contract, not merely
+   * mis-described: the contract drop this client was built against predates the
+   * feature. Until a later drop publishes them, the whole route family is
+   * described here and called through `api.gap`. The tripwire below fires when
+   * the vendored `paths` finally grows `.../podcast`, at which point delete
+   * these three members, move `use-podcast.ts` onto `api.GET/POST/DELETE`, and
+   * strike the entry from `docs/CONTRACT-FEEDBACK.md`.
+   */
+  "/workspaces/{workspaceId}/podcast": {
+    get: {
+      parameters: { path: { workspaceId: string } };
+      responses: { 200: { content: { "application/json": SuccessEnvelope<Podcast | null> } } };
+    };
+    post: {
+      parameters: { path: { workspaceId: string } };
+      requestBody?: { content: { "application/json": Record<string, never> } };
+      // 202 in practice (async generation); openapi-fetch keys success off 2xx.
+      responses: { 202: { content: { "application/json": SuccessEnvelope<Podcast> } } };
+    };
+    delete: {
+      parameters: { path: { workspaceId: string } };
+      responses: {
+        200: {
+          content: { "application/json": SuccessEnvelope<{ id: string; deleted: true }> };
+        };
+      };
     };
   };
 }
@@ -78,4 +109,15 @@ type _RetrySourceStillBroken = StillMissingItsBody<
   [VendoredPostBody<"/sources/{sourceId}/retry">] extends [never] ? true : false
 >;
 
-export type { _CreateSourceStillBroken, _RetrySourceStillBroken };
+
+/**
+ * The podcast family is described in `ContractGapPaths` because the vendored
+ * `paths` has no `/workspaces/{workspaceId}/podcast` member at all. Assert that
+ * absence: when a contract drop publishes the route, `paths` gains the key and
+ * this stops compiling — the signal to delete the podcast members above.
+ */
+type PodcastRouteStillMissing = StillMissingItsBody<
+  "/workspaces/{workspaceId}/podcast" extends keyof paths ? false : true
+>;
+
+export type { _CreateSourceStillBroken, _RetrySourceStillBroken, PodcastRouteStillMissing };

@@ -229,3 +229,49 @@ export async function completeChat(opts: CompleteChatOptions): Promise<ChatCompl
     requestOpts,
   );
 }
+
+export interface SynthesizeSpeechOptions {
+  model: string;
+  /** OpenAI voice id (e.g. "marin"); falls back to `fallbackVoice` on a voice error. */
+  voice: string;
+  fallbackVoice?: string;
+  /** Steering for gpt-4o-mini-tts; ignored by models that don't accept it. */
+  instructions?: string;
+  input: string;
+  signal?: AbortSignal;
+}
+
+/**
+ * Synthesise one line of speech to an MP3 buffer. Used by the podcast job, one
+ * call per script turn (each turn is < 4096 chars by the contract's per-turn cap).
+ * On an invalid-voice error the fallback voice is tried once, so a renamed or
+ * withdrawn preview voice degrades rather than failing the whole episode.
+ */
+export async function synthesizeSpeech(opts: SynthesizeSpeechOptions): Promise<Buffer> {
+  const client = getClient();
+  const requestOpts = opts.signal ? { signal: opts.signal } : undefined;
+  const call = (voice: string): Promise<{ arrayBuffer: () => Promise<ArrayBuffer> }> =>
+    client.audio.speech.create(
+      {
+        model: opts.model,
+        voice,
+        input: opts.input,
+        response_format: 'mp3',
+        ...(opts.instructions ? { instructions: opts.instructions } : {}),
+      },
+      requestOpts,
+    );
+
+  let response: { arrayBuffer: () => Promise<ArrayBuffer> };
+  try {
+    response = await call(opts.voice);
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    if (opts.fallbackVoice && (status === 400 || status === 404)) {
+      response = await call(opts.fallbackVoice);
+    } else {
+      throw err;
+    }
+  }
+  return Buffer.from(await response.arrayBuffer());
+}

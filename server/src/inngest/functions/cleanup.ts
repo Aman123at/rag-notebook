@@ -10,6 +10,11 @@ import {
 } from '@/inngest/events.js';
 import { destroyRawAsset } from '@/integrations/cloudinary.js';
 import { deleteBySourceId, deleteByUserId, deleteByWorkspaceId } from '@/integrations/qdrant.js';
+import {
+  deletePodcastForWorkspaceSystem,
+  deletePodcastsForUser,
+  listPodcastAudioForUser,
+} from '@/repository/podcasts.repo.js';
 import { listStoragePublicIdsForWorkspace } from '@/repository/sources.repo.js';
 
 export const cleanupSourceFunction = inngest.createFunction(
@@ -59,6 +64,16 @@ export const cleanupWorkspaceFunction = inngest.createFunction(
     for (const publicId of publicIds) {
       await step.run(`destroy-cloudinary:${publicId}`, () => destroyRawAsset(publicId));
     }
+
+    // The workspace is soft-deleted, so the FK cascade never removes the podcast:
+    // read its audio id, destroy the asset, then hard-delete the row (frees the slot).
+    const podcastAudioId = await step.run('delete-podcast-row', async () => {
+      const removed = await deletePodcastForWorkspaceSystem(workspaceId);
+      return removed?.audioPublicId ?? null;
+    });
+    if (podcastAudioId) {
+      await step.run('destroy-podcast-audio', () => destroyRawAsset(podcastAudioId));
+    }
     return { workspaceId, chunkCount, cloudinaryDestroyed: publicIds.length };
   },
 );
@@ -81,6 +96,16 @@ export const cleanupUserFunction = inngest.createFunction(
     await step.run('delete-qdrant-points', async () => {
       await deleteByUserId(userId);
     });
-    return { userId, chunkCount };
+
+    // Reclaim every podcast MP3 the user owns, then hard-delete the rows.
+    const podcastAudioIds = await step.run('list-podcast-audio', async () => {
+      const rows = await listPodcastAudioForUser(userId);
+      return rows.map((r) => r.audioPublicId).filter((id): id is string => id !== null);
+    });
+    for (const publicId of podcastAudioIds) {
+      await step.run(`destroy-podcast-audio:${publicId}`, () => destroyRawAsset(publicId));
+    }
+    const podcastCount = await step.run('delete-podcast-rows', () => deletePodcastsForUser(userId));
+    return { userId, chunkCount, podcastCount };
   },
 );

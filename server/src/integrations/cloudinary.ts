@@ -77,6 +77,58 @@ export function buildSignedDownloadUrl(publicId: string, ttlSeconds = 300): Sign
   return { url, expiresAt: new Date(expiresAtEpoch * 1000).toISOString() };
 }
 
+/**
+ * Signed URL for INLINE playback (no `attachment`), so it can back an `<audio>`
+ * element rather than triggering a browser download. Used for podcast audio.
+ * Default TTL is 1 hour: a listener can pause a 10-minute episode and resume.
+ */
+export function buildSignedInlineUrl(publicId: string, ttlSeconds = 3600): SignedDownload {
+  ensureConfigured();
+  const expiresAtEpoch = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const url = cloudinary.utils.private_download_url(publicId, '', {
+    resource_type: 'raw',
+    type: 'authenticated',
+    expires_at: expiresAtEpoch,
+    attachment: false,
+  });
+  return { url, expiresAt: new Date(expiresAtEpoch * 1000).toISOString() };
+}
+
+/**
+ * Upload a raw binary (the assembled podcast MP3) from an in-process Buffer to
+ * Cloudinary as an `authenticated` raw asset, so it is served only through the
+ * signed-URL path — never public. Returns the stored public id and byte count.
+ * Overwrites any asset already at `publicId` (idempotent re-runs of the job).
+ */
+export async function uploadRawBuffer(
+  publicId: string,
+  bytes: Buffer,
+): Promise<{ publicId: string; bytes: number }> {
+  ensureConfigured();
+  const res = await new Promise<{ public_id: string; bytes: number }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'raw',
+        type: 'authenticated',
+        public_id: publicId,
+        overwrite: true,
+        invalidate: true,
+      },
+      (err, result) => {
+        if (err) {
+          const cause: Error =
+            err instanceof Error ? err : new Error(`Cloudinary upload of ${publicId} failed.`);
+          return reject(cause);
+        }
+        if (!result) return reject(new Error(`Cloudinary upload of ${publicId} returned no result.`));
+        resolve(result);
+      },
+    );
+    stream.end(bytes);
+  });
+  return { publicId: res.public_id, bytes: res.bytes };
+}
+
 export interface CloudinaryAsset {
   publicId: string;
   bytes: number;

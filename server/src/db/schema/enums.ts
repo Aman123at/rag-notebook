@@ -6,6 +6,8 @@ import {
   FINISH_REASONS,
   MESSAGE_ROLES,
   PLAN_TIERS,
+  PODCAST_STALE_REASONS,
+  PODCAST_STATUSES,
   REACTIONS,
   SOURCE_STATUSES,
   SOURCE_TYPES,
@@ -25,6 +27,8 @@ export const messageRoleEnum = enumFromUnion('message_role', MESSAGE_ROLES);
 export const reactionEnum = enumFromUnion('reaction', REACTIONS);
 export const dislikedReasonEnum = enumFromUnion('disliked_reason', DISLIKED_REASONS);
 export const chatModelEnum = enumFromUnion('chat_model', CHAT_MODELS);
+export const podcastStatusEnum = enumFromUnion('podcast_status', PODCAST_STATUSES);
+export const podcastStaleReasonEnum = enumFromUnion('podcast_stale_reason', PODCAST_STALE_REASONS);
 export const finishReasonEnum = enumFromUnion('finish_reason', FINISH_REASONS);
 
 export const attackTypeEnum = pgEnum('attack_type', [

@@ -5,6 +5,7 @@ import {
   playlistArtifactAggregatorFunction,
 } from './generate-artifact.js';
 import { ingestSourceFunction } from './ingest-source.js';
+import { generatePodcastFunction, markPodcastStaleFunction } from './podcast.js';
 import { summarizeChatFunction } from './summarize.js';
 import { sweepReservationsFunction } from './sweep-reservations.js';
 
@@ -18,6 +19,8 @@ export const inngestFunctions = [
   sweepReservationsFunction,
   playlistArtifactAggregatorFunction,
   generateArtifactFunction,
+  generatePodcastFunction,
+  markPodcastStaleFunction,
 ];
 
 export {
@@ -26,7 +29,9 @@ export {
   cleanupWorkspaceFunction,
   expandPlaylistFunction,
   generateArtifactFunction,
+  generatePodcastFunction,
   ingestSourceFunction,
+  markPodcastStaleFunction,
   playlistArtifactAggregatorFunction,
   summarizeChatFunction,
   sweepReservationsFunction,

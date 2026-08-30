@@ -32,6 +32,8 @@ const EnvSchema = z.object({
   CHAT_MODEL: z.string().min(1).default('gpt-4o-mini'),
   EMBEDDING_MODEL: z.string().min(1).default('text-embedding-3-small'),
   CLASSIFIER_MODEL: z.string().min(1).default('gpt-4o-mini'),
+  // Podcast: the script is written by CHAT_MODEL; audio is synthesised by this TTS model.
+  PODCAST_TTS_MODEL: z.string().min(1).default('gpt-4o-mini-tts'),
 
   QDRANT_URL: z.string().url().optional(),
   QDRANT_API_KEY: z.string().min(1).optional(),

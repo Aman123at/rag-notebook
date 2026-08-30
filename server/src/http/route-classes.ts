@@ -56,6 +56,10 @@ export const ROUTE_CLASS: Readonly<Record<RouteKey, RateLimitClass>> = Object.fr
   'artifacts.create': 'write',
   'artifacts.get': 'read',
 
+  'podcasts.get': 'read',
+  'podcasts.create': 'write',
+  'podcasts.delete': 'write',
+
   'ops.healthz': 'read',
   'ops.readyz': 'read',
   'ops.contract': 'read',
