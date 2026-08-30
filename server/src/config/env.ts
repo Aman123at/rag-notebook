@@ -61,6 +61,14 @@ const EnvSchema = z.object({
   TAVILY_API_KEY: z.string().min(1).optional(),
   FIRECRAWL_API_KEY: z.string().min(1).optional(),
   YOUTUBE_API_KEY: z.string().min(1).optional(),
+  // Optional egress proxy for YouTube caption fetches only. YouTube answers
+  // datacenter IPs with a bot check, so a deployed server usually needs a
+  // residential proxy here even though a laptop does not.
+  YOUTUBE_PROXY_URL: z
+    .string()
+    .url()
+    .refine((v) => /^https?:|^socks[45]?:/i.test(v), 'must be an http(s):// or socks:// proxy URL')
+    .optional(),
 
   RAZORPAY_KEY_ID: z.string().min(1).optional(),
   RAZORPAY_KEY_SECRET: z.string().min(1).optional(),
