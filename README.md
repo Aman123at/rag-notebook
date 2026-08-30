@@ -88,6 +88,9 @@ Clerk-hosted sign-in, display-name editing, a usage chart over time, a token bud
 
 ---
 
+## Design
+![design](docs/architecture.png)
+
 ## Architecture
 
 ```
